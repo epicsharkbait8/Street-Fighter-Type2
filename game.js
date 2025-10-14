@@ -8,23 +8,25 @@ kaboom({
 setGravity(800);
 
 // Load a player sprite
-loadSprite("foo", "New Piskel-1.png.png");
-loadSprite("foo2", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQccF1S-NPYFMJ1Hey62chXLeoGyl13zJYqiQ&s");
+loadSprite("ryu", "New Piskel.gif");
+loadSprite("avdol", "New Piskel (1).gif");
 //hopefully the world
 
 
 // --- The Player Character ---
 const player = add([
- sprite("foo"),
+ sprite("ryu"),
  pos(100, 100),
- area({ scale: 5 }),
+ area({ scale: .9 }),
+ scale(5),
  body(),
 ]);
 
 const player2 = add([
- sprite("foo2"),
+ sprite("avdol"),
  pos(1000, 100),
- area({ scale: 0.7 }),
+ area({ scale: 0.9 }),
+ scale(5),
  body(),
 ]);
 
@@ -61,4 +63,19 @@ onKeyPress("w", () => {
  }
 });
 
+
+    player.onCollide("foo2", (foo2, col) => {
+        if (col.isBottom()) {
+            destroy(foo2);
+            player.jump(300);
+        } else {
+            destroy(player);
+            go("lose");
+        }
+    });
+
+    scene("lose", () => {
+    add([ text("Game Over"), pos(center()), anchor("center") ]);
+    wait(2, () => { go("main", { level: 0 }); });
+});
 go("main")
