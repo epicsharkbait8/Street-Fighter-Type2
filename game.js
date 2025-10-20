@@ -28,22 +28,12 @@ loadSprite("avdol", "AllAvdol.png", {
         jump: { from: 2, to: 2, loop: false, speed: 1 }, // single-frame jump
     },
 });
-
-
 // Minimal anim component (no-op) to satisfy entity creation.
-// Kaboom's `sprite()` already provides `.play()` and frame handling,
 // so this component simply gives a harmless id so `anim()` can be used in add().
 function anim() {
     return {
         id: "anim",
     };
-}
-
-// Helper to destroy an entity and go to lose scene shortly after.
-function killAndLose(e) {
-    destroy(e);
-    // small delay so destroy completes and any callbacks run
-    wait(0.05, () => go("lose"));
 }
 
 // Simple level data: bottom row is all '=' which maps to a platform tile
