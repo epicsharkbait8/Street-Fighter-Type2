@@ -1,123 +1,167 @@
 // A starter template for side-scrolling games like our platformer
 kaboom({
  width: 1200,
- height: 600,
+ height: 700,
  background: [0, 100, 200],
 });
 
-setGravity(800);
+setGravity(500);
 
 // Load a player sprite
-loadSprite("ryu", "ryu.png", {
-    sliceX: 1,
+loadSprite("ryu", "AllRyu.png", {
+    sliceX: 2,
     sliceY: 2,
     anims: {
         idle: { from: 0, to: 1, loop: true, speed: 4 },
+        jump: { from: 2, to: 2, loop: false, speed: 1 }, // single-frame jump
     },
+
 });
+// Jump sprite for Ryu (overlay shown while jumping)
+loadSprite("ryu_jump", "ryuJump.png");
 // Load Avdol as a 2-frame spritesheet (64x128, 1 column, 2 rows)
-loadSprite("avdol", "avdol.png", {
-    sliceX: 1,
+loadSprite("avdol", "AllAvdol.png", {
+    sliceX: 2,
     sliceY: 2,
     anims: {
         idle: { from: 0, to: 1, loop: true, speed: 4 },
+        jump: { from: 2, to: 2, loop: false, speed: 1 }, // single-frame jump
     },
 });
-//hopefully the world
-    const LEVEL = [
-        [
-            "                    ",
-            "                    ",
-            "                    ",
-            "                    ",
-            "                    ",
-            "                    ",
-            "====================",
-        ]
-    ];
 
-    // Configure what each symbol in the level layout means.
-    const levelConf = {
-        tileWidth: 47,
-        tileHeight: 47,
-        tiles: {
-            " ": () => [],
-            "=": () => [
-                rect(47, 47),
-                color(0, 200, 0),
-                area(),
-                body({ isStatic: true }),
-                "platform",
-            ],
-        }
+
+// Minimal anim component (no-op) to satisfy entity creation.
+// Kaboom's `sprite()` already provides `.play()` and frame handling,
+// so this component simply gives a harmless id so `anim()` can be used in add().
+function anim() {
+    return {
+        id: "anim",
     };
+}
 
-// --- The Player Character ---
-const player = add([
- sprite("ryu"),
- pos(100, 100),
- area({ scale: .5 }),
- scale(5),
- body(),
-]);
-player.play("idle");
+// Helper to destroy an entity and go to lose scene shortly after.
+function killAndLose(e) {
+    destroy(e);
+    // small delay so destroy completes and any callbacks run
+    wait(0.05, () => go("lose"));
+}
 
-const player2 = add([
- sprite("avdol"),
- pos(1000, 100),
- area({ scale: 0.5 }),
- scale(5),
- body(),
-]);
-player2.play("idle");
+// Simple level data: bottom row is all '=' which maps to a platform tile
+const LEVELS = [
+    [
+        "                    ",                   
+        "                    ",
+        "                    ",
+        "                    ",
+        "                    ",
+        "                    ",
+        "                    ",
+        "                    ",
+        "====================",
+        "====================",
+        "====================",
+    ]
+];
 
-// --- The World ---
-add([
-    rect(width(), 48),
-    pos(0, height() - 48),
-    color(80, 40, 20), // solid brown floor
-    area(),
-    body({ isStatic: true }),
-    "floor", // tag for collision if needed
-]);
+// Level config: map '=' to a static platform tile
+const levelConf = {
+    tileWidth: 64,
+    tileHeight: 64,
+    tiles: {
+        " ": () => [],
+        "=": () => [
+            rect(64, 64),
+            color(0, 200, 0),
+            area(),
+            body({ isStatic: true }),
+            "platform",
+        ],
 
-// --- Movement Controls ---
-onKeyDown("left", () => {
- player.move(-200, 0);
-});
-onKeyDown("right", () => {
- player.move(200, 0);
-});
-onKeyPress("up", () => {
- if (player.isGrounded()) {
- player.jump(650);
- }
-});
+    },
+};
 
-onKeyDown("a", () => {
- player2.move(-200, 0);
-});
-onKeyDown("d", () => {
- player2.move(200, 0);
-});
-onKeyPress("w", () => {
- if (player.isGrounded()) {
- player2.jump(650);
- }
-});
+// Main scene: build level, add players and controls
+scene("main", () => {
+    // Build the level (floor at bottom)
+    addLevel(LEVELS[0], levelConf);
 
-    player.onCollide("foo2", (foo2, col) => {
-        if (col.isBottom()) {
-            destroy(foo2);
-            player.jump(300);
-        } else {
-            destroy(player);
-            go("lose");
+    // --- The Player Character ---
+    const player = add([
+        sprite("ryu"),
+        pos(100, height() - 48 - (64 * 5)), // spawn above the tiled floor
+        scale(5),
+        area({ scale: 0.6 }),
+        body(),
+           anim(),
+           "ryu",
+    ]);
+    player.play("idle");
+
+    const player2 = add([
+        sprite("avdol"),
+        pos(1000, height() - 48 - (64 * 5)),
+        scale(5),
+        area({ scale: 0.6 }),
+        body(),
+           anim(),
+           "avdol",
+    ]);
+    player2.play("idle");
+
+    // --- Movement Controls ---
+    onKeyDown("left", () => { player.move(-200, 0); });
+    onKeyDown("right", () => { player.move(200, 0); });
+    onKeyPress("up", () => {
+        if (player.isGrounded()) {
+            player.jump(650);
+            player.play("jump");
+        }
+    });
+    // revert to idle when grounded
+    player.onUpdate(() => {
+        if (player.isGrounded() && player.curAnim() !== "idle") {
+            player.play("idle");
         }
     });
 
-    scene("lose", () => {
-    add([ text("Game Over"), pos(center()), anchor("center") ]);
+    onKeyDown("a", () => { player2.move(-200, 0); });
+    onKeyDown("d", () => { player2.move(200, 0); });
+    onKeyPress("w", () => {
+        if (player2.isGrounded()) {
+            player2.jump(650);
+            player2.play("jump");
+        }
+    });
+    // revert player2 to idle when grounded
+    player2.onUpdate(() => {
+        if (player2.isGrounded() && player2.curAnim() !== "idle") {
+            player2.play("idle");
+        }
+    });
+    // Ryu lands on Avdol -> destroy Avdol and bounce Ryu
+    player.onCollide("avdol", (a, col) => {
+        if (col.isBottom()) {
+                destroy(a);
+                go("Ryuwin");
+        }
+    });
+
+    // Avdol lands on Ryu -> destroy Ryu and bounce Avdol
+    player2.onCollide("ryu", (r, col) => {
+        if (col.isBottom()) {
+                destroy(r);
+                go("Avdolwin");
+        }
+    });
+});
+
+scene("Ryuwin", () => {
+    add([ text("Ryu Wins!"), pos(center()), anchor("center") ]);
     wait(2, () => { go("main", { level: 0 }); });
 });
-go("main")
+scene("Avdolwin", () => {
+    add([ text("Avdol Wins!"), pos(center()), anchor("center") ]);
+    wait(2, () => { go("main", { level: 0 }); });
+});
+
+go("main");
